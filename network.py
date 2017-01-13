@@ -2,73 +2,26 @@ import theano
 import logging
 from theano import tensor as T
 
-import blocks
 from blocks.bricks.base import application
-from blocks.bricks.conv import MaxPooling
-from blocks.initialization import (Constant, Uniform,
-                                   IsotropicGaussian)
-from toolz import merge
-import logging
+from blocks.initialization import (Constant, Uniform)
+
 import numpy as np
 from toolz.itertoolz import interleave
 from collections import Counter
 from blocks.bricks.conv import (Convolutional, ConvolutionalSequence,
                                 Flattener)
-from blocks.bricks import (Initializable, Rectifier, Logistic,
-                           FeedforwardSequence,
-                           MLP, Activation, Linear, Softmax)
+from blocks.bricks import (Initializable, Rectifier, FeedforwardSequence,
+                           MLP, Activation, Softmax)
 
 from blocks.model import Model
-from blocks.bricks.parallel import Fork
-from blocks.graph import ComputationGraph, apply_noise, apply_dropout
-from newblocks import (Adam, RMSProp, GradientDescent, CompositeRule,
-                       StepClipping, AsyncUpdate, Scale, AsyncRMSProp)
+from blocks.graph import ComputationGraph
+
+from blocks.algorithms import (Adam, GradientDescent, CompositeRule,
+                               StepClipping, Scale)
+from newblocks import (AsyncUpdate, AsyncRMSProp)
 from collections import OrderedDict
 
 logger = logging.getLogger(__name__)
-
-
-def update_cum_gradients(init_state, last_state, common_net):
-    """ Update the shared model parameters
-    init_state (OrderedDict)
-    last_state (OrderedDict)
-    common_net (Model)
-
-    """
-    new_update = OrderedDict()
-
-    for kk in init_state:
-        if kk in last_state:
-            new_update[kk] = last_state[kk] - init_state[kk]
-
-    # FIXME perform the lock here
-
-    # Update joint parameters then
-    for kk in common_net.get_parameter_dict():
-        if kk in new_update:
-            print "UPDATE {} WITH MEAN {}".format(kk,
-                                                  np.mean(new_update[kk]))
-
-            common_net.get_parameter_dict()[kk].set_value(
-                common_net.get_parameter_dict()[kk].get_value() +
-                new_update[kk])
-
-    # FIXME: Release the lock here
-
-
-def extract_params_from_model(common_net):
-    params = OrderedDict()
-
-    for kk in common_net.get_parameter_dict():
-        params[kk] = common_net.get_parameter_dict()[kk].get_value()
-
-    return params
-
-
-def read_common_parameters(agent_model, common_model):
-
-    # A one liner here, just passing the parameters from model to model
-    agent_model.set_parameter_values(common_model.get_parameter_values())
 
 
 class SharedA3CConvNet(FeedforwardSequence, Initializable):
@@ -97,7 +50,7 @@ class SharedA3CConvNet(FeedforwardSequence, Initializable):
 
         conv_parameters = zip(filter_sizes, feature_maps)
 
-        # Construct convolutional layers with corresponding parameters
+        # Build convolutional layers with corresponding parameters
         self.layers = list(interleave([
             (Convolutional(filter_size=filter_size,
                            num_filters=num_filter,
@@ -108,8 +61,7 @@ class SharedA3CConvNet(FeedforwardSequence, Initializable):
              in enumerate(conv_parameters)),
             conv_activations]))
 
-        # (MaxPooling(size, name='pool_{}'.format(i))
-        # for i, size in enumerate(pooling_sizes))]))
+        # Build the sequence of conv layers
         self.conv_sequence = ConvolutionalSequence(self.layers, num_channels,
                                                    image_size=image_shape)
 
@@ -143,11 +95,11 @@ class SharedA3CConvNet(FeedforwardSequence, Initializable):
         self.conv_sequence._push_allocation_config()
         conv_out_dim = self.conv_sequence.get_dim('output')
 
-        print "MY FLUXO ", [np.prod(conv_out_dim)]
+        print "Input to MLP hidden layer ", [np.prod(conv_out_dim)]
         self.top_mlp.activations = self.top_mlp_activations
         self.top_mlp.dims = [np.prod(conv_out_dim)] + self.top_mlp_dims
 
-        print "CHNUF", self.top_mlp.dims
+        print "Dimensions of hidden layer", self.top_mlp.dims
 
 
 class PolicyAndValueA3C(Initializable):
@@ -180,12 +132,16 @@ class PolicyAndValueA3C(Initializable):
                                            conv_step=conv_step,
                                            border_mode=border_mode, **kwargs)
 
-        # We build now the policy
-        print "CHUF0 ", self.shared_a3c.top_mlp_dims[-1]
+        # We build now the policy/value separated networks
+        print ("Dimenson of the last shared layer {}".format(
+            self.shared_a3c.top_mlp_dims[-1]))
 
+        #Policy has one dimension per each action
         self.policy = MLP([activation_policy], [
                           self.shared_a3c.top_mlp_dims[-1]] +
                           [number_actions], name="mlp_policy")
+
+        # The critic has one dimension in the output layer
         self.value = MLP([activation_value], [
                          self.shared_a3c.top_mlp_dims[-1]] + [1],
                          name="mlp_value")
@@ -196,16 +152,15 @@ class PolicyAndValueA3C(Initializable):
 
     @application(inputs=['input_image'], outputs=['output_policy'])
     def apply_policy(self, input_image):
-        #output_policy = self.fork.apply(self.shared_a3c.apply(input_image))[0]
         output_policy = self.policy.apply(self.shared_a3c.apply(input_image))
         return output_policy
 
     @application(inputs=['input_image'], outputs=['output_value'])
     def apply_value(self, input_image):
-        #output_value = self.fork.apply(self.shared_a3c.apply(input_image))[1]
         output_value = self.value.apply(self.shared_a3c.apply(input_image))
         return output_value
 
+    # FIXME: remove this function
     @application(inputs=['input_image', 'input_actions', 'input_reward'],
                  outputs=['total_error', 'p_loss', 'v_loss', 'entropy',
                           'log_prob', 'advantage', 'v_value',
@@ -240,11 +195,11 @@ class PolicyAndValueA3C(Initializable):
 
         entropy = -T.sum(p_value * T.log(p_value), axis=1,
                          keepdims=True)
-        p_loss = p_loss - self.beta * entropy  # encourage diversity
+        # encourage action diversity by substracting entropy
+        p_loss = p_loss - self.beta * entropy
         v_loss = T.sqr(input_reward[:, None] - v_value)
 
         total_error = T.mean(p_loss + (0.5 * v_loss))
-
         return total_error
 
 
@@ -256,12 +211,19 @@ def build_a3c_network(feature_maps=[16, 32],
                       num_channels=10,
                       mlp_hiddens=[256],
                       num_actions=10,
-                      dropout=0.2,  # FIXME: not used: delete
                       lr=0.00025,
                       clip_c=0.8,
                       border_mode='full',
                       async_update=False):
+    """ Builds the agent networks/functions 
 
+    Parameters:
+    -----------
+    # TODO
+
+    """
+
+    # Activation functions
     conv_activations = [Rectifier() for _ in feature_maps]
     mlp_activations = [Rectifier() for _ in mlp_hiddens]
     conv_subsample = [[step, step] for step in step_size]
@@ -286,8 +248,7 @@ def build_a3c_network(feature_maps=[16, 32],
     policy_and_value_net.shared_a3c.push_initialization_config()
     policy_and_value_net.push_initialization_config()
 
-    print "LEN ", len(policy_and_value_net.shared_a3c.layers)
-
+    # Xavier initialization
     for i in range(len(policy_and_value_net.shared_a3c.layers)):
         if i == 0:
             policy_and_value_net.shared_a3c.layers[i].weights_init = Uniform(
@@ -310,9 +271,6 @@ def build_a3c_network(feature_maps=[16, 32],
                                                        feature_maps[-1])))
         policy_and_value_net.shared_a3c.top_mlp.linear_transformations[
             i].bias_init = Constant(.0)
-
-    print "POLICY SPACE ", dir(policy_and_value_net.policy)
-    print "VALUE SPACE ", dir(policy_and_value_net.value)
 
     policy_and_value_net.policy.weights_init = Uniform(
         std=1.0/np.sqrt(mlp_hiddens[-1]))
@@ -338,6 +296,7 @@ def build_a3c_network(feature_maps=[16, 32],
     value_network = policy_and_value_net.apply_value(th_input_image)
     cost_network = policy_and_value_net.cost(th_input_image, th_actions,
                                              th_reward)
+    # FIXME: added for debug, remove
     extracost_network = policy_and_value_net.extra_cost(th_input_image,
                                                         th_actions,
                                                         th_reward)  # DEBUG
@@ -347,9 +306,11 @@ def build_a3c_network(feature_maps=[16, 32],
 
     # Perform some optimization step
     cg = ComputationGraph(cost_network)
+
+    # FIXME: Remove
     cg_extra = ComputationGraph(extracost_network)  # DEBUG
 
-    # Print shapes
+    # Print shapes of network parameters
     shapes = [param.get_value().shape for param in cg.parameters]
     logger.info("Parameter shapes: ")
     for shape, count in Counter(shapes).most_common():
@@ -362,20 +323,27 @@ def build_a3c_network(feature_maps=[16, 32],
     cost_model = Model(cost_network)
     value_model = Model(value_network)
 
-    print "VALUE MODEL {}".format(
-        value_model.get_parameter_values()[
-            '/policyandvaluea3c/mlp_value/linear_0.W'][0:10])
-
-    print "COST MODEL {}".format(
-        cost_model.get_parameter_values()[
-            '/policyandvaluea3c/mlp_value/linear_0.W'][0:10])
-
     if not async_update:
+        # A threaded worker: steep gradient descent
+        # A trick was done here to reuse existent bricks. The system performed
+        # steepest descent to aggregate the gradients. However, the gradients
+        # are averaged in a minibatch (instead of being just added). Therefore,
+        # the agent is going to perform the following operations in each
+        # minibatch:
+        # 1) steepes descent with learning rate of 1 to only aggregate the
+        # gradients.
+        # 2) undo the update operation to obtain the avg. gradient :
+        #    gradient = parameter_before_minibatch - parameter_after_minibatch
+        # 3) Multiply the gradient by the length of the minibatch to obtain the
+        #    exact gradient at each minibatch.
         algorithm = GradientDescent(
             cost=cost_network, parameters=cg.parameters,
             step_rule=Scale())
     else:
-        print "CG.PARAMETERS", cg.parameters
+        # Async update for the shared worker
+        # The other part of the trick. A custom optimization block was
+        # developed
+        # here to receive as inputs the acc. gradients at each worker
         algorithm = AsyncUpdate(parameters=cg.parameters,
                                 inputs=cost_model.get_parameter_dict().keys(),
                                 step_rule=AsyncRMSProp(learning_rate=lr,
@@ -384,13 +352,8 @@ def build_a3c_network(feature_maps=[16, 32],
                                                        decay_rate=0.99,
                                                        max_scaling=10))
 
-        # FIXME: delete not needed here
-        # step_rule=CompositeRule([StepClipping(clip_c),
-        #                         Adam(learning_rate=lr)]))
-
     algorithm.initialize()
 
-    print "INPUTS ", cg.inputs
     f_cost = theano.function(inputs=cg.inputs, outputs=cg.outputs)
     f_policy = theano.function(inputs=cg_policy.inputs,
                                outputs=cg_policy.outputs)
@@ -403,7 +366,8 @@ def build_a3c_network(feature_maps=[16, 32],
 
 
 if __name__ == "__main__":
-
+    """ A small code snippet to test the network """
+    
     feature_maps = [32, 64]
     conv_sizes = [8, 4]
     pool_sizes = [4, 2]
@@ -450,13 +414,8 @@ if __name__ == "__main__":
     policy_and_value_net.shared_a3c.layers[0].weights_init = Uniform(width=.2)
     policy_and_value_net.shared_a3c.layers[1].weights_init = Uniform(width=.09)
 
-    print "LEN ", len(policy_and_value_net.shared_a3c.layers)
-
     policy_and_value_net.shared_a3c.top_mlp.linear_transformations[
         0].weights_init = Uniform(width=.08)
-
-    print "POLICY SPACE ", dir(policy_and_value_net.policy)
-    print "VALUE SPACE ", dir(policy_and_value_net.value)
 
     policy_and_value_net.policy.weights_init = Uniform(width=.15)
     policy_and_value_net.value.weights_init = Uniform(width=.15)
@@ -478,29 +437,20 @@ if __name__ == "__main__":
 
     policy = policy_and_value_net.apply_policy(x)
     value = policy_and_value_net.apply_value(x)
-
-    #y = tensor.vector('targets')
-
     num_batches = 32
-    zasca = np.array(np.random.randint(128, size=(num_batches, num_channels,
-                                                  image_size[0],
-                                                  image_size[1])),
-                     dtype="uint8")
-
-    pol_result = policy.eval({x: zasca})
-    val_result = value.eval({x: zasca})
-
-    # print "POLICY ", pol_result
-    # print "VALUE ", val_result
-    # print "ZASCA ",zasca
-
-    # print "WEI ",dir(policy_and_value_net.shared_a3c.flattener.children)
+    random_data = np.array(np.random.randint(128,
+                                             size=(num_batches, num_channels,
+                                                   image_size[0],
+                                                   image_size[1])),
+                           dtype="float32")
+    
+    pol_result = policy.eval({x: random_data})
+    val_result = value.eval({x: random_data})
 
     print "POLICY SHAPE ", np.shape(pol_result)
     print "VALUE SHAPE ", np.shape(val_result)
-    print "ZASCA SHAPE ", np.shape(zasca)
 
-    th_reward = T.matrix('ereward')
+    th_reward = T.vector('ereward')
     th_actions = T.matrix('actions')
 
     reward = np.array(np.random.rand((num_batches)), dtype="float32")
@@ -508,18 +458,10 @@ if __name__ == "__main__":
 
     cost_network = policy_and_value_net.cost(x, th_actions, th_reward)
     cost_results = cost_network.eval(
-        {x: zasca, th_actions: actions, th_reward: reward})
-
-    print "COST ", cost_results
-    print "COST SHAPE ", np.shape(cost_results)
+        {x: random_data, th_actions: actions, th_reward: reward})
 
     # Perform some optimization step
     cg = ComputationGraph(cost_network)
-
-    if (dropout < 1.0):
-        dropout_inputs = [x for x in cg.intermediary_variables]
-        # print "DROPOUT INPUTS ",dropout_inputs
-        #cg = apply_dropout(cg, dropout_inputs, dropout)
 
     # Print shapes
     shapes = [param.get_value().shape for param in cg.parameters]
@@ -536,23 +478,4 @@ if __name__ == "__main__":
                                  Adam()]))
 
     cost_model = Model(cost_network)
-    print "COST MODEL ", cost_model.get_parameter_dict()
-
-    print "DIR ", cost_model
-    params = extract_params_from_model(cost_model)
-
-    print "LEN PARAMS ", len(params)
-
-    params_extra = OrderedDict()
-    for kk in params:
-        params_extra[kk] = params[kk] + 0.1
-
-    update_cum_gradients(params, params_extra, cost_model)
-
-    params_extra = OrderedDict()
-    for kk in params:
-        params_extra[kk] = params[kk] + 0.2
-
-    update_cum_gradients(params, params_extra, cost_model)
-
-    read_common_parameters(cost_model, cost_model)
+    logger.info("Cost Model ".format(cost_model.get_parameter_dict()))
