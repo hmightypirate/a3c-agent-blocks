@@ -133,10 +133,10 @@ class PolicyAndValueA3C(Initializable):
                                            border_mode=border_mode, **kwargs)
 
         # We build now the policy/value separated networks
-        print ("Dimenson of the last shared layer {}".format(
+        print("Dimenson of the last shared layer {}".format(
             self.shared_a3c.top_mlp_dims[-1]))
 
-        #Policy has one dimension per each action
+        # Policy has one dimension per each action
         self.policy = MLP([activation_policy], [
                           self.shared_a3c.top_mlp_dims[-1]] +
                           [number_actions], name="mlp_policy")
@@ -215,7 +215,7 @@ def build_a3c_network(feature_maps=[16, 32],
                       clip_c=0.8,
                       border_mode='full',
                       async_update=False):
-    """ Builds the agent networks/functions 
+    """ Builds the agent networks/functions
 
     Parameters:
     -----------
@@ -367,7 +367,7 @@ def build_a3c_network(feature_maps=[16, 32],
 
 if __name__ == "__main__":
     """ A small code snippet to test the network """
-    
+
     feature_maps = [32, 64]
     conv_sizes = [8, 4]
     pool_sizes = [4, 2]
@@ -383,9 +383,7 @@ if __name__ == "__main__":
     clip_c = 0.8
 
     # Initialize policy network
-
     # Shared A3C
-
     # Initialize value network
     conv_activations = [Rectifier() for _ in feature_maps]
     mlp_activations = [Rectifier() for _ in mlp_hiddens]
@@ -443,7 +441,7 @@ if __name__ == "__main__":
                                                    image_size[0],
                                                    image_size[1])),
                            dtype="float32")
-    
+
     pol_result = policy.eval({x: random_data})
     val_result = value.eval({x: random_data})
 
