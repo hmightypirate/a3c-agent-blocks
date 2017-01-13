@@ -64,26 +64,6 @@ def process_args(args, defaults, description):
                         help=('Iterations between checkpoints of the models' +
                               '(default: % (default)s'))
 
-    parser.add_argument('--epsilon_min', dest="epsilon_min",
-                        type=float, default=defaults.EPSILON_MIN,
-                        help=('Minimum epsilon during training' +
-                              '(default: % (default)s'))
-
-    parser.add_argument('--epsilon_init_min', dest="epsilon_init_min",
-                        type=float, default=defaults.EPSILON_INIT_MIN,
-                        help=('Minimum exploration term when launching' +
-                              'an agent(default: % (default)s'))
-
-    parser.add_argument('--epsilon_max', dest="epsilon_max",
-                        type=float, default=defaults.EPSILON_MAX,
-                        help=('Maximum epsilon during training(default:' +
-                              '% (default)s'))
-
-    parser.add_argument('--epsilon_decay', dest="epsilon_decay",
-                        type=float, default=defaults.EPSILON_DECAY,
-                        help=('Epsilon decay during training' +
-                              '(default: % (default)s'))
-
     parser.add_argument('--deterministic', dest="deterministic",
                         action="store_true", default=defaults.DETERMINISTIC,
                         help=('Perform deterministic training(defaults:' +
@@ -157,10 +137,6 @@ def launch(args, defaults, description):
         resized_height=parameters.resized_height,
         agent_history_length=parameters.agent_history_length,
         checkpoint_interval=parameters.checkpoint_interval,
-        epsilon_min=parameters.epsilon_min,
-        epsilon_init_min=parameters.epsilon_init_min,
-        epsilon_max=parameters.epsilon_max,
-        epsilon_decay=parameters.epsilon_decay,
         training_flag=parameters.training,
         sample_argmax=parameters.sample_argmax,
         render_flag=parameters.render_flag,
@@ -172,9 +148,9 @@ def launch(args, defaults, description):
         gradient_clipping=parameters.gradient_clipping,
         model_file=parameters.load_file)
 
-    print "NUM CHILDREN ", parameters.num_threads
-
+    logging.info("Num Actors {}".format(parameters.num_threads))
     agent.execute()
+
 
 if __name__ == '__main__':
     pass

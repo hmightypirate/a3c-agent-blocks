@@ -26,10 +26,7 @@ def sample_policy_action(num_actions, probs, rng):
     list of float with the probability of each action
 
     """
-
-    # print "NP SHAPE ",np.shape(probs)
     probs = probs - np.finfo(np.float32).epsneg
-    # print "NP SHAPE ",np.shape(probs)
     histogram = rng.multinomial(1, probs)
     action_index = int(np.nonzero(histogram)[0])
     return action_index, probs
@@ -47,8 +44,6 @@ def sample_argmax_action(num_actions, probs, rng):
     list of float with the probability of each action
 
     """
-
-    print "XXXX ARGMAX"
     action_index = int(np.argmax(probs))
     return action_index, probs
 
@@ -138,8 +133,8 @@ class Common_Model_Wrapper(object):
     def save_model(self, save_file):
         """ Dump the current shared model to a file
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
 
 
         """
@@ -336,8 +331,7 @@ class A3C_Agent(threading.Thread):
                  value_network, cost_function,
                  cost_model, algorithm, resized_width, resized_height,
                  agent_history_length, checkpoint_interval, shared_model,
-                 epsilon_min, epsilon_max, epsilon_decay, num_reps_eval,
-                 gamma_rate=0.99,
+                 num_reps_eval, gamma_rate=0.99,
                  sample_argmax=True, extracost_function=None):
         super(A3C_Agent, self).__init__()
 
@@ -356,9 +350,6 @@ class A3C_Agent(threading.Thread):
         self.agent_history_length = agent_history_length
         self.checkpoint_interval = checkpoint_interval
         self.shared_model = shared_model
-        self.epsilon = epsilon_max
-        self.epsilon_min = epsilon_min
-        self.epsilon_decay = epsilon_decay
         self.num_reps_eval = num_reps_eval
         self.extracost_function = extracost_function
         self.gamma_rate = gamma_rate
@@ -389,7 +380,7 @@ class A3C_Agent(threading.Thread):
                     else:
                         new_update[kk] = (init_params[kk] - end_params[kk])
             else:
-                print "XXXXYYYYY THIS VAR IS NOT IN LAST_STATE ", kk
+                logger.error("{} was not part of the update".format(kk))
 
         model.set_parameter_values(init_params)
 
@@ -399,29 +390,8 @@ class A3C_Agent(threading.Thread):
         logger.info("Thread {} running!".format(self.num))
         self.pick_one_thread_data()
 
-    def _sample_action(self, num_actions, probs):
-        """ Samples an action if no random action is needed
-        (only for training)
-
-        """
-
-        if self.rng.rand() < self.epsilon:
-            action_index = self.rng.randint(0, num_actions)
-            # Update exploration
-            self.epsilon = np.max(self.epsilon - self.epsilon_decay,
-                                  self.epsilon_min)
-            # return self._sample_function( num_actions, probs )
-            return action_index, np.ones(num_actions) * (1.0/num_actions)
-
-        else:
-            return self._sample_function(num_actions, probs)
-
     def pick_one_thread_data(self):
         """ Executes the iterations till training is over """
-
-        th_state = T.tensor4('features')
-        th_reward = T.vector('ereward')
-        th_actions = T.ivector('actions')
 
         # Wrap env with AtariEnvironment helper class
         env = AtariEnvironment(
@@ -435,8 +405,6 @@ class A3C_Agent(threading.Thread):
 
         # Set up per-episode counters
         ep_reward = 0
-        ep_avg_v = 0
-        v_steps = 0
         ep_t = 0
 
         probs_summary_t = 0
@@ -474,9 +442,6 @@ class A3C_Agent(threading.Thread):
                 s_t1, r_t, terminal, info = env.step(action_index)
                 ep_reward += r_t
 
-                # if (t - t_start == 1):
-                #    print ("PROBAS ",probs)
-
                 r_t = np.clip(r_t, -1, 1)
                 past_rewards.append(r_t)
 
@@ -490,7 +455,6 @@ class A3C_Agent(threading.Thread):
                 R_t = 0
             else:
                 # Picking last state
-                # print "FLUXY VT ", np.shape(s_t)
                 R_t = self.value_network([s_t])[0][0]
 
             # Obtaining the reward at each epoch
@@ -500,37 +464,19 @@ class A3C_Agent(threading.Thread):
                 R_t = past_rewards[i] + self.gamma_rate * R_t
                 R_batch[i] = R_t
 
-            # standardize the rewards to be unit normal
-            # (helps control the gradient estimator variance)
-            # From karpathys code
-            #R_batch -= np.mean(R_batch)
-            #R_batch /= np.std(R_batch)
-            #resulijo = self.value_network(s_batch)
-            #print ("VBATCH {} {} ".format(resulijo, np.shape(resulijo)))
-
-            # Minimize gradient here?
-            # TODO: process batch
-
-            # print "RT ",R_batch
-            # print "PAST REWARDS ",past_rewards
-
+            # Minimize gradient
             batch = OrderedDict()
             batch['input_image'] = s_batch
             batch['input_actions'] = np.array(a_batch, dtype="int32")
             batch['input_reward'] = np.array(R_batch, dtype="float32")
 
-            # print "NP SHAPE ",np.shape(s_batch)
-            # print "ACT SHAPE ",np.shape(a_batch)
-            # print "REW SHAPE ",np.shape(R_batch)
-
             if (self.shared_model.common_model.curr_it % 1000 == 0):
                 # Show progress
                 print "BATCH INPUT R ", batch['input_reward']
 
-                print("XXXXXXXX {} {} {}".format(
+                print("XXXXXXXX {} {}".format(
                     self.shared_model.common_model.curr_it,
-                    self.shared_model.common_model.curr_steps,
-                    self.epsilon))
+                    self.shared_model.common_model.curr_steps))
                 print "COST NETWORK ", self.cost_function(
                     batch['input_image'],
                     batch['input_reward'],
@@ -546,25 +492,6 @@ class A3C_Agent(threading.Thread):
             self.optim_algorithm.process_batch(batch)
             # update common parameters
             end_params = extract_params_from_model(self.cost_model)
-            # self.shared_model.common_model.model.set_parameter_values(
-            #    end_params)
-
-            ######################################
-            #
-            # DEBUGGING END
-            #
-            #####################################
-            # cum_grads_alt = self.one_step_acc(init_params,
-            #                                 self.optim_algorithm,
-            #                                 self.cost_model,
-            #                                 batch)
-
-            # if (self.num == 0):
-            # for grad in cum_grads_alt:
-            # print "KK {} VALUE {} ".format(grad,
-            # np.mean(cum_grads_alt[grad]))
-
-            # 3
 
             self.shared_model.update_cum_gradients(
                 init_params,
@@ -578,8 +505,8 @@ class A3C_Agent(threading.Thread):
             self.shared_model.common_model.curr_it += 1
             if ((self.shared_model.common_model.curr_it %
                  self.checkpoint_interval) == 0):
-
-                # Perform evaluation: we are going to scape this
+                # FIXME: Perform evaluation: we are going to scape this as
+                # gym env fails to close some env after a test
                 # self.shared_model.perform_evaluation( self.num_reps_eval,
                 #                     self.shared_model.common_model.game,
                 #              self.shared_model.common_model.curr_steps)
@@ -588,13 +515,12 @@ class A3C_Agent(threading.Thread):
                 self.shared_model.save_model("{}_{}.tar".format(
                     self.shared_model.common_model.game,
                     self.shared_model.common_model.curr_steps))
-                # TODO: save optimization state
-                pass
 
             # Check if terminal
             if terminal:
-                print "EPISODE REWARD {} EPISODE LENGTH {} VALUE {}".format(
-                    ep_reward, ep_t, last_value)
+                logger.info("Episode Reward\t{}\tEpisode Length\t{}\tValue " +
+                            "terminal state\t{}".format(
+                                ep_reward, ep_t, last_value))
                 # TODO: collect stats
                 s_t = env.get_initial_state()
                 terminal = False
@@ -605,16 +531,13 @@ class A3C_Agent(threading.Thread):
 class MultiA3CTrainStream(object):
     """ Run an A3C Agent to collect training data and update an A3C model
 
-    The batch is initially unknown? -> number of learners
-
+    #TODO
 
     """
 
     def __init__(self, rng, epochs, max_steps, batch_size, game, num_threads,
                  resized_width=84, resized_height=84, agent_history_length=4,
-                 checkpoint_interval=5000, epsilon_min=0.1,
-                 epsilon_init_min=0.4, epsilon_max=0.9,
-                 epsilon_decay=1000000, training_flag=True,
+                 checkpoint_interval=5000, training_flag=True,
                  render_flag=False, results_file=False,
                  sample_argmax=True, num_steps_eval=1000,
                  num_reps_eval=10, learning_rate=0.00025,
@@ -634,10 +557,6 @@ class MultiA3CTrainStream(object):
         self.resized_height = resized_height
         self.agent_history_length = agent_history_length
         self.checkpoint_interval = checkpoint_interval
-        self.epsilon_min = epsilon_min
-        self.epsilon_init_min = epsilon_init_min
-        self.epsilon_max = epsilon_max
-        self.epsilon_decay = epsilon_decay
         self.training_flag = training_flag
         self.num_steps_eval = num_steps_eval
         self.num_reps_eval = num_reps_eval
@@ -649,6 +568,8 @@ class MultiA3CTrainStream(object):
         self.model_file = model_file
         self.gamma_rate = gamma_rate
 
+        # Build shared envs
+        # TODO: check
         self.env = gym.make(self.game)
         self.validation_env = AtariEnvironment(
             gym_env=self.env,
@@ -659,7 +580,7 @@ class MultiA3CTrainStream(object):
     def training(self):
         """ Perform the training steps """
 
-        # Create the envs
+        # Create the envs of the threaded workers
         envs = [gym.make(self.game) for i in range(self.num_threads)]
 
         # Build the networks (one for each environment)
@@ -672,7 +593,7 @@ class MultiA3CTrainStream(object):
             clip_c=self.gradient_clipping) for
                       thread_id in range(self.num_threads)]
 
-        print "GOING TO BUILD GLOBAL"
+        logger.info("Building the shared networks")
         a3c_global = A3C.build_a3c_network(
             image_size=(self.resized_width, self.resized_height),
             num_channels=self.agent_history_length,
@@ -681,7 +602,7 @@ class MultiA3CTrainStream(object):
             clip_c=self.gradient_clipping,
             async_update=True)
 
-        print "GLOBAL BUILT"
+        logger.info("Building the shared worker")
         # Building the extra environment for evaluation
         a3c_global_costmodel = Common_Model_Wrapper(
             rng=self.rng,
@@ -700,11 +621,6 @@ class MultiA3CTrainStream(object):
             results_file=self.results_file,
             render_flag=self.render_flag)
 
-        # TODO pick different epsilon (exploration) and use it
-        a3c_epsilon = [
-            np.random.rand() * (self.epsilon_max - self.epsilon_init_min) +
-            self.epsilon_init_min for thread_id in range(self.num_threads)]
-
         # Start num concurrent threads
         thread_list = [A3C_Agent(
             rng=self.rng,
@@ -721,9 +637,6 @@ class MultiA3CTrainStream(object):
             agent_history_length=self.agent_history_length,
             checkpoint_interval=self.checkpoint_interval,
             shared_model=a3c_global_costmodel,
-            epsilon_min=self.epsilon_min,
-            epsilon_max=a3c_epsilon[thread_id],
-            epsilon_decay=self.epsilon_decay,
             num_reps_eval=self.num_reps_eval,
             gamma_rate=self.gamma_rate,
             sample_argmax=self.sample_argmax,
@@ -741,8 +654,7 @@ class MultiA3CTrainStream(object):
     def do_test(self):
         """ Execute a gym evaluation """
 
-        print "GOING TO BUILD GLOBAL"
-
+        logger.info("Building the shared networks")
         a3c_global = A3C.build_a3c_network(
             image_size=(self.resized_width, self.resized_height),
             num_channels=self.agent_history_length,
@@ -751,7 +663,7 @@ class MultiA3CTrainStream(object):
             clip_c=self.gradient_clipping,
             async_update=True)
 
-        print "GLOBAL MODEL"
+        logger.info("Building the shared worker")
         # Building the extra environment for evaluation
         a3c_global_costmodel = Common_Model_Wrapper(
             rng=self.rng,
@@ -777,17 +689,17 @@ class MultiA3CTrainStream(object):
                 a3c_global_costmodel.common_model.model.set_parameter_values(
                     parameters)
 
+        # Use the current time to build the experiment name
         exp_name = "{}_{}".format(self.game,
                                   time.strftime("%Y%m%d%H%M%S"))
 
+        # Perform an evaluation
         a3c_global_costmodel.perform_evaluation(
             self.num_reps_eval, exp_name,
             0, do_gym_eval=True)
 
     def execute(self):
         """ Perform training/evaluation of the model """
-
-        # TODO load model
         if self.training_flag:
             self.training()
         else:
