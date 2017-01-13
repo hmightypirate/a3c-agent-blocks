@@ -218,7 +218,10 @@ class AsyncUpdatesAlgorithm(TrainingAlgorithm):
 
 
 class AsyncUpdate(AsyncUpdatesAlgorithm):
-    """ A base class for async updates """
+    """ A base class for async updates
+
+    TODO
+    """
 
     def __init__(self, parameters=None, inputs=None, step_rule=None, **kwargs):
         # set initial parameters
