@@ -129,7 +129,7 @@ def process_args(args, defaults, description):
     parser.add_argument('--gamma_rate', type=float, dest="gamma_rate",
                         default=defaults.GAMMA_RATE,
                         help=('Gamma rate propagating rewards backward'))
-    
+
     parameters = parser.parse_args(args)
 
     return parameters

@@ -287,27 +287,27 @@ def build_a3c_network(feature_maps=[16, 32],
     policy_and_value_net.push_initialization_config()
 
     print "LEN ", len(policy_and_value_net.shared_a3c.layers)
-    
+
     for i in range(len(policy_and_value_net.shared_a3c.layers)):
         if i == 0:
             policy_and_value_net.shared_a3c.layers[i].weights_init = Uniform(
                 std=1.0/np.sqrt((image_size[0] *
-                         image_size[1] *
-                         num_channels)))
+                                 image_size[1] *
+                                 num_channels)))
         else:
             policy_and_value_net.shared_a3c.layers[i].weights_init = Uniform(
                 std=1.0/np.sqrt((conv_sizes[(i-1)/2] *
-                         conv_sizes[(i-1)/2] *
-                         feature_maps[(i-1)/2])))
+                                 conv_sizes[(i-1)/2] *
+                                 feature_maps[(i-1)/2])))
 
         policy_and_value_net.shared_a3c.layers[i].bias_init = Constant(.1)
-    
+
     for i in range(len(policy_and_value_net.shared_a3c.
                        top_mlp.linear_transformations)):
         policy_and_value_net.shared_a3c.top_mlp.linear_transformations[
             i].weights_init = Uniform(std=1.0/np.sqrt((conv_sizes[-1] *
-                                               conv_sizes[-1] *
-                                               feature_maps[-1])))
+                                                       conv_sizes[-1] *
+                                                       feature_maps[-1])))
         policy_and_value_net.shared_a3c.top_mlp.linear_transformations[
             i].bias_init = Constant(.0)
 
@@ -363,13 +363,13 @@ def build_a3c_network(feature_maps=[16, 32],
     value_model = Model(value_network)
 
     print "VALUE MODEL {}".format(
-        value_model.get_parameter_values()['/policyandvaluea3c/mlp_value/linear_0.W'][0:10])
-
+        value_model.get_parameter_values()[
+            '/policyandvaluea3c/mlp_value/linear_0.W'][0:10])
 
     print "COST MODEL {}".format(
-        cost_model.get_parameter_values()['/policyandvaluea3c/mlp_value/linear_0.W'][0:10])
+        cost_model.get_parameter_values()[
+            '/policyandvaluea3c/mlp_value/linear_0.W'][0:10])
 
-    
     if not async_update:
         algorithm = GradientDescent(
             cost=cost_network, parameters=cg.parameters,

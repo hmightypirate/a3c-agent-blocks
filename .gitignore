@@ -1,4 +1,7 @@
 log/
-.orig
-.out
-.tar
+*.orig
+*.out
+*.tar
+*~
+.coafile
+*.pyc

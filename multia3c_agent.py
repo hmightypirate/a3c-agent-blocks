@@ -14,6 +14,7 @@ import network as A3C
 
 logger = logging.getLogger(__name__)
 
+
 def sample_policy_action(num_actions, probs, rng):
     """ Sample an action using a prob. distribution
 
@@ -286,7 +287,7 @@ class Common_Model_Wrapper(object):
                     test_value.append(
                         self.common_model.value_network([s_t])[0][0])
                     # print "ACTION INDEX ",action_index
-                    
+
                 test_rewards.append(ep_reward)
                 test_ep_length.append(ep_t)
 
@@ -362,7 +363,7 @@ class A3C_Agent(threading.Thread):
         self.num_reps_eval = num_reps_eval
         self.extracost_function = extracost_function
         self.gamma_rate = gamma_rate
-        
+
         if sample_argmax:
             self._sample_function = sample_argmax_action
         else:
@@ -370,9 +371,9 @@ class A3C_Agent(threading.Thread):
 
     def one_step_acc(self, init_params, algorithm, model, batch):
         """ Accumulate gradients """
-        #Restore initial state
+        # Restore initial state
         new_update = OrderedDict()
-        
+
         for i in range(len(batch['input_reward'])):
             new_batch = OrderedDict()
             new_batch['input_image'] = [batch['input_image'][i]]
@@ -394,8 +395,7 @@ class A3C_Agent(threading.Thread):
         model.set_parameter_values(init_params)
 
         return new_update
-        
-            
+
     def run(self):
         logger.info("Thread {} running!".format(self.num))
         self.pick_one_thread_data()
@@ -501,7 +501,6 @@ class A3C_Agent(threading.Thread):
                 R_t = past_rewards[i] + self.gamma_rate * R_t
                 R_batch[i] = R_t
 
-
             # standardize the rewards to be unit normal
             # (helps control the gradient estimator variance)
             # From karpathys code
@@ -551,23 +550,23 @@ class A3C_Agent(threading.Thread):
             # self.shared_model.common_model.model.set_parameter_values(
             #    end_params)
 
-
             ######################################
             #
             # DEBUGGING END
             #
             #####################################
-            #cum_grads_alt = self.one_step_acc(init_params,
-             #                                 self.optim_algorithm,
-             #                                 self.cost_model,
-             #                                 batch)
+            # cum_grads_alt = self.one_step_acc(init_params,
+            #                                 self.optim_algorithm,
+            #                                 self.cost_model,
+            #                                 batch)
 
-            #if (self.num == 0):
-            #for grad in cum_grads_alt:
-            #        print "KK {} VALUE {} ".format(grad, np.mean(cum_grads_alt[grad]))
+            # if (self.num == 0):
+            # for grad in cum_grads_alt:
+            # print "KK {} VALUE {} ".format(grad,
+            # np.mean(cum_grads_alt[grad]))
 
-            ########################################3
-            
+            # 3
+
             self.shared_model.update_cum_gradients(
                 init_params,
                 end_params,
@@ -620,7 +619,7 @@ class MultiA3CTrainStream(object):
                  render_flag=False, results_file=False,
                  sample_argmax=True, num_steps_eval=1000,
                  num_reps_eval=10, learning_rate=0.00025,
-                 gamma_rate = 0.99,
+                 gamma_rate=0.99,
                  gradient_clipping=None, model_file=None):
         """ TODO
 
@@ -732,9 +731,6 @@ class MultiA3CTrainStream(object):
             extracost_function=a3c_networks[thread_id][5])
                         for thread_id in range(self.num_threads)]
 
-        for t in thread_list:
-            print "CHUFATERA ",t.cost_model.get_parameter_values()['/policyandvaluea3c/mlp_value/linear_0.W'][0:10]
-        
         for t in thread_list:
             t.start()
 
