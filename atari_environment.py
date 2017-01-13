@@ -1,7 +1,7 @@
 ###############################################
 #
 # This wrapper class is from async_rl-keras project
-# FIXME <Put URL here>
+# https://github.com/coreylynch/async-rl
 #
 #################################################
 
