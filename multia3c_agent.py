@@ -1,6 +1,5 @@
 import gym
 import gym.wrappers
-import theano
 from theano import tensor as T
 import threading
 import time
