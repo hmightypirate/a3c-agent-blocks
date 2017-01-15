@@ -9,18 +9,20 @@ class Defaults:
     #------------------------
     # Experiment Parameters
     #------------------------
-    TRAINING = False
-    EPOCHS = 100  # FIXME: not used?
+    TRAINING = False  # testing by default
+    EPOCHS = 100  # FIXME: not used
     MAX_STEPS = 160000000
     BATCH_SIZE = 5
-    DETERMINISTIC = False
-    SAMPLE_ARGMAX = False
+    DETERMINISTIC = False  # use deterministic seed
+    SAMPLE_ARGMAX = False  # False means use exploration
     NUM_REPS_EVAL = 10
     NUM_STEPS_EVAL = 10000
+    # folder and prefix file
+    # (the folder must exist before launching the code)
     RESULTS_FILE = "log/results"
     LEARNING_RATE = 0.0007
     GRADIENT_CLIPPING = None
-    RENDER_FLAG = True
+    RENDER_FLAG = True  # only whilst evaluating the model
 
     #------------------------
     # GYM Parameters
@@ -36,10 +38,6 @@ class Defaults:
     RESIZED_HEIGHT = 84
     AGENT_HISTORY_LENGTH = 4
     CHECKPOINT_INTERVAL = 50000
-    EPSILON_MIN = 0.  # FIXME: not used?
-    EPSILON_INIT_MIN = 0.  # FIXME: not used?
-    EPSILON_MAX = 0.  # FIXME: not used
-    EPSILON_DECAY = 0.000001  # FIXME: not used
 
 
 if __name__ == "__main__":
