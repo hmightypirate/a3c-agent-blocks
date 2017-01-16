@@ -35,12 +35,12 @@ python run_a3c.py --load_file Breakout-v0_28117541.tar
 
 ### Training
 
-Just type this command (and be patient). Training a model could perfectly last one day or more...
+Just type this command (and be patient). Training a model could perfectly last one day or more... In the paper the agent was trained for 80 million frames in less than one day. 
 
 ```
 python run_a3c.py
 ```
-A checkpoint is saved after several iterations that can be configured at launch time. 
+A checkpoint is saved after several iterations that can be configured at launch time. The checkpoint indicates the number of frames the agent has executed <Game_name>_<frames>.tar (e.g. Breakout-v0_28117541.tar) . 
 
 ## Results
 TODO: Coming soon!
@@ -60,6 +60,8 @@ and many more...
 
 * This project implements an Asynchronous version of RMSProp to follow the original paper. Nevertheless Theano does not allow thread-unsafe operations. Hence, each worker captures a lock before updating the network parameters of the shared model, so the final implementation is not completely asynchronous. 
 
-* Gym Atari environment and ALE are a bit different. Gym does not consider live loss as a terminal state whereas the deepmind paper actually does (during training). This will make some differences in the final results.
+* Gym Atari environment and ALE are a bit different. Gym does not consider life loss as a terminal state whereas the deepmind paper actually does (during training). This will make some differences in the final results.
+
+When building this project I have found particularly important to use Xavier initialization of the network parameters.
 
 Any feedback would be greatly appreaciated if you try this code. And have fun!
