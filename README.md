@@ -7,6 +7,8 @@ This project was initially intended as a personal project to learn the Blocks li
 * When building new blocks could not be avoided, I've tried to use the same coding style of the original library (e.g. the Aysnchronous version of RMSProp).
 * To use the same network/parameterization of the A3C agent used in the original paper, although using the gym environment instead of directly interacting with the ALE environment [](https://github.com/mgbellemare/Arcade-Learning-Environment)
 
+![](https://cloud.githubusercontent.com/assets/7602074/21998208/b7b9472c-dc33-11e6-8052-a58139d8c23e.png)
+
 ## Requirements
 * Blocks (http://blocks.readthedocs.io/en/latest/setup.html)
 * Theano (http://deeplearning.net/software/theano/install.html)
@@ -40,7 +42,7 @@ Just type this command (and be patient). Training a model could perfectly last o
 ```
 python run_a3c.py
 ```
-A checkpoint is saved after several iterations that can be configured at launch time. The checkpoint indicates the number of frames the agent has executed <Game_name>_<frames>.tar (e.g. Breakout-v0_28117541.tar) . 
+A checkpoint is saved after several iterations that can be configured at launch time. The checkpoint indicates the number of frames the agent has executed Game-frames.tar (e.g. Breakout-v0_28117541.tar) . 
 
 ## Results
 TODO: Coming soon!
