@@ -40,7 +40,7 @@ python run_a3c.py --load_file Breakout-v0_28117541.tar
 Just type this command (and be patient). Training a model could perfectly last one day or more... In the paper the agent was trained for 80 million frames in less than one day. 
 
 ```
-python run_a3c.py
+python run_a3c.py --training
 ```
 A checkpoint is saved after several iterations that can be configured at launch time. The checkpoint indicates the number of frames the agent has executed Game-frames.tar (e.g. Breakout-v0_28117541.tar) . 
 
