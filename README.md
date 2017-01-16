@@ -44,6 +44,15 @@ python run_a3c.py --training
 ```
 A checkpoint is saved after several iterations that can be configured at launch time. The checkpoint indicates the number of frames the agent has executed Game-frames.tar (e.g. Breakout-v0_28117541.tar) . 
 
+You could override the game by adding the --game parameter
+
+```
+python run_a3c.py --training --game Pooyan-v0
+```
+
+NOTE: remember to use the same --game parameter during evaluation
+
+
 ## Results
 TODO: Coming soon!
 
