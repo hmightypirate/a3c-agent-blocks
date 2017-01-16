@@ -19,18 +19,37 @@ from blocks.graph import ComputationGraph
 from blocks.algorithms import (Adam, GradientDescent, CompositeRule,
                                StepClipping, Scale)
 from newblocks import (AsyncUpdate, AsyncRMSProp)
-from collections import OrderedDict
 
 logger = logging.getLogger(__name__)
 
 
 class SharedA3CConvNet(FeedforwardSequence, Initializable):
-    """
+    """ Implements the Shared Layers of the Actor-Critic
 
     Parameters
-    -------------
-
-    #TODO
+    ----------
+    conv_activations : list of `blocks.bricks.base.brick`
+        activation functions after every convolutional layers
+    num_channels : int
+      input channels in the first convolution layer. It is the number
+      of historic frames used as the input state of the agent.
+    image_shape : list of int
+      width and height shape of the resized image
+    filter_sizes: list of int  # FIXME: change the name
+      num of filters at each convolutional layer
+    feature_maps : list of [int, int]
+       size of the filters (width, height) at each convolutional layer
+    pooling sizes: list of [int,int]  # FIXME: not used
+       size of the pooling layer. One element per convolutional layer
+    mlp_hiddens: list of int
+      size of the output layer of the hidden layers. One element per
+      hidden layer.
+    mlp_activations: list of `blocks.bricks.base.brick`
+      activation functions at each hidden layer. One element per layer
+    conv_step: list of (int, int)
+      typically called stride
+    border_mode : str
+      full or valid are accepted by Blocks. Full will be usually employed.
 
     """
 
@@ -104,10 +123,40 @@ class SharedA3CConvNet(FeedforwardSequence, Initializable):
 
 class PolicyAndValueA3C(Initializable):
     """
-    Parameters:
-    -------------
-
-    TODO
+    Parameters
+    ----------
+    conv_activations : list of `blocks.bricks.base.brick`
+        activation functions after every convolutional layers
+    num_channels : int
+      input channels in the first convolution layer. It is the number
+      of historic frames used as the input state of the agent.
+    image_shape : list of int
+      width and height shape of the resized image
+    filter_sizes: list of int  # FIXME: change the name
+      num of filters at each convolutional layer
+    feature_maps : list of [int, int]
+       size of the filters (width, height) at each convolutional layer
+    pooling sizes: list of [int,int]  # FIXME: not used
+       size of the pooling layer. One element per convolutional layer
+    mlp_hiddens: list of int
+      size of the output layer of the hidden layers. One element per
+      hidden layer.
+    number_actions: int
+      number of actions of the Actor (output of the policy network)
+    mlp_activations: list of `blocks.bricks.base.brick`
+      activation functions at each hidden layer. One element per layer
+    activation_policy: instance of :class: `blocks.bricks.base.brick`
+       activation at the policy layer. Tipically a Softmax because we
+       want the probabilities of each action
+    activation_value: instance of :class: `blocks.bricks.base.brick`
+       the original function is a Linear one which is the default in Blocks.
+       So None is the default.
+    conv_step: list of (int, int)
+      typically called stride
+    border_mode : str
+      full or valid are accepted by Blocks. Full will be usually employed.
+    beta: float
+      entropy error modulator. Default is 0.01
 
     """
 
@@ -206,6 +255,7 @@ class PolicyAndValueA3C(Initializable):
 def build_a3c_network(feature_maps=[16, 32],
                       conv_sizes=[8, 4],
                       pool_sizes=[4, 2],
+                      # FIXME: used image_shape elsewhere
                       image_size=(80, 80),
                       step_size=[4, 2],
                       num_channels=10,
@@ -219,7 +269,33 @@ def build_a3c_network(feature_maps=[16, 32],
 
     Parameters:
     -----------
-    # TODO
+    feature_maps : list of [int, int]
+       size of the filters (width, height) at each convolutional layer
+    conv_sizes: list of int  # FIXME: change the name
+      num of filters at each convolutional layer
+    pooling sizes: list of int  # FIXME: not used
+       size of the pooling layer. One element per convolutional layer
+    image_size : list of int
+      width and height shape of the resized image
+    step_size: list of int
+      typically called stride
+    num_channels : int
+      input channels in the first convolution layer. It is the number
+      of historic frames used as the input state of the agent.
+    mlp_hiddens: list of int
+      size of the output layer of the hidden layers. One element per
+      hidden layer.
+    num_actions: int
+      number of actions of the Actor (output of the policy network)
+    lr : float
+      learning rate of async rmsprop
+    clip_c : float
+      > 0 if gradient should be clipped. FIXME: actually not used
+    border_mode : str
+      full or valid are accepted by Blocks. Full will be usually employed.
+    async_update: bool
+      true if the network to be created is the shared worker or False if
+      it is just a worker.
 
     """
 
