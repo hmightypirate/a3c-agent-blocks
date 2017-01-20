@@ -325,12 +325,13 @@ class PolicyAndValueA3CLSTM(Initializable):
         # LSTM block
 
         # Preparation to LSTM
-        print "FLUX ",self.shared_a3c.top_mlp_dims[-1]
-        print "LSTM UNITS ",self.lstm_output_units
+        print "FLUX ", self.shared_a3c.top_mlp_dims[-1]
+        print "LSTM UNITS ", self.lstm_output_units
         self.linear_to_lstm = Linear(self.shared_a3c.top_mlp_dims[-1],
-                                self.lstm_output_units * 4, name='linear_to_lstm')
-        self.lstm_block = LSTM(lstm_output_units, name='lstm')        
-        
+                                     self.lstm_output_units * 4,
+                                     name='linear_to_lstm')
+        self.lstm_block = LSTM(lstm_output_units, name='lstm')
+
         # Policy has one dimension per each action
         self.policy = MLP([activation_policy], [
                           lstm_output_units] +
@@ -342,21 +343,22 @@ class PolicyAndValueA3CLSTM(Initializable):
                          name="mlp_value")
 
         super(PolicyAndValueA3CLSTM, self).__init__(**kwargs)
-        
-        self.children = [self.shared_a3c, self.linear_to_lstm, self.lstm_block,
+
+        self.children = [self.shared_a3c, self.linear_to_lstm,
+                         self.lstm_block,
                          self.policy, self.value]
 
     @application(inputs=['input_image', 'states', 'cells'],
                  outputs=['output_policy', 'states', 'cells'])
     def apply_policy(self, input_image, states, cells):
-        
+
         h, c = self.lstm_block.apply(inputs=self.linear_to_lstm.apply(
             self.shared_a3c.apply(input_image)),
                                      states=states, cells=cells)
 
         h = h.sum(axis=1)
         c = c.sum(axis=1)
-        
+
         output_policy = self.policy.apply(h)
         return output_policy, h, c
 
@@ -369,7 +371,7 @@ class PolicyAndValueA3CLSTM(Initializable):
 
         h = h.sum(axis=1)
         c = c.sum(axis=1)
-        
+
         output_value = self.value.apply(h)
         return output_value
 
@@ -383,7 +385,7 @@ class PolicyAndValueA3CLSTM(Initializable):
                                      states=states, cells=cells)
         h = h.sum(axis=1)
         c = c.sum(axis=1)
-        
+
         p_value = (self.policy.apply(h))
         log_prob = T.log(T.sum((p_value) * input_actions,
                                axis=1, keepdims=True))
@@ -400,7 +402,7 @@ class PolicyAndValueA3CLSTM(Initializable):
         total_error = T.mean(p_loss + (0.5 * v_loss))
         return total_error
 
-    
+
 def build_a3c_network(feature_maps=[16, 32],
                       conv_sizes=[8, 4],
                       pool_sizes=[4, 2],
@@ -591,19 +593,19 @@ def build_a3c_network(feature_maps=[16, 32],
 
 
 def build_a3c_network_lstm(feature_maps=[16, 32],
-                      conv_sizes=[8, 4],
-                      pool_sizes=[4, 2],
-                      # FIXME: used image_shape elsewhere
-                      image_size=(80, 80),
-                      step_size=[4, 2],
-                      num_channels=10,
-                      mlp_hiddens=[256],
-                              lstm_output_units=256,
-                      num_actions=10,
-                      lr=0.00025,
-                      clip_c=0.8,
-                      border_mode='full',
-                      async_update=False):
+                           conv_sizes=[8, 4],
+                           pool_sizes=[4, 2],
+                           # FIXME: used image_shape elsewhere
+                           image_size=(80, 80),
+                           step_size=[4, 2],
+                           num_channels=10,
+                           mlp_hiddens=[256],
+                           lstm_output_units=256,
+                           num_actions=10,
+                           lr=0.00025,
+                           clip_c=0.8,
+                           border_mode='full',
+                           async_update=False):
     """ Builds the agent networks/functions
 
     Parameters:
@@ -644,7 +646,7 @@ def build_a3c_network_lstm(feature_maps=[16, 32],
     conv_activations = [Rectifier() for _ in feature_maps]
     mlp_activations = [Rectifier() for _ in mlp_hiddens]
     conv_subsample = [[step, step] for step in step_size]
-    
+
     policy_and_value_net = PolicyAndValueA3CLSTM(
         conv_activations,
         num_channels,
@@ -698,7 +700,7 @@ def build_a3c_network_lstm(feature_maps=[16, 32],
         std=1.0/np.sqrt(feature_maps[-1]))
     policy_and_value_net.lstm_block.biases_init = Constant(.0)
     policy_and_value_net.lstm_block.initialize()
-        
+
     policy_and_value_net.policy.weights_init = Uniform(
         std=1.0/np.sqrt(lstm_output_units))
     policy_and_value_net.value.weights_init = Uniform(
@@ -720,7 +722,7 @@ def build_a3c_network_lstm(feature_maps=[16, 32],
     th_actions = T.imatrix('input_actions')
     th_states = T.matrix('states')
     th_cells = T.matrix('cells')
-    
+
     policy_network = policy_and_value_net.apply_policy(th_input_image,
                                                        th_states,
                                                        th_cells)
@@ -730,13 +732,13 @@ def build_a3c_network_lstm(feature_maps=[16, 32],
     cost_network = policy_and_value_net.cost(th_input_image, th_actions,
                                              th_reward, th_states,
                                              th_cells)
-    
+
     cg_policy = ComputationGraph(policy_network)
     cg_value = ComputationGraph(value_network)
 
     # Perform some optimization step
     cg = ComputationGraph(cost_network)
-    
+
     # Print shapes of network parameters
     shapes = [param.get_value().shape for param in cg.parameters]
     logger.info("Parameter shapes: ")
@@ -876,12 +878,12 @@ if __name__ == "__main__":
     th_actions = T.imatrix('actions')
 
     reward = np.array(np.random.rand((num_batches)), dtype="float32")
-    
+
     actions = np.zeros((num_batches, num_actions), dtype="int32")
     for i in range(0, num_batches):
         index_action = np.random.randint(num_actions)
         actions[i, index_action] = 1
-    
+
     cost_network = policy_and_value_net.cost(x, th_actions, th_reward)
     cost_results = cost_network.eval(
         {x: random_data, th_actions: actions, th_reward: reward})
@@ -995,16 +997,16 @@ if __name__ == "__main__":
          th_states: random_states,
          th_cells: random_cells})
 
-    c_result=policy[2].eval(
+    c_result = policy[2].eval(
         {x: random_data,
          th_states: random_states,
          th_cells: random_cells})
-        
+
     print "POLICY SHAPE LSTM ", np.shape(pol_result)
     print "VALUE SHAPE LSTM ", np.shape(val_result)
     print "H SHAPE LSTM ", np.shape(h_result)
     print "C SHAPE LSTM ", np.shape(c_result)
-    
+
     th_reward = T.vector('ereward')
     th_actions = T.imatrix('actions')
 
@@ -1014,7 +1016,7 @@ if __name__ == "__main__":
     for i in range(0, num_batches):
         index_action = np.random.randint(num_actions)
         actions[i, index_action] = 1
-    
+
     cost_network = policy_and_value_net_lstm.cost(x, th_actions, th_reward,
                                                   th_states, th_cells)
     cost_results = cost_network.eval(
@@ -1040,5 +1042,3 @@ if __name__ == "__main__":
 
     cost_model = Model(cost_network)
     logger.info("Cost Model ".format(cost_model.get_parameter_dict()))
-
-    
