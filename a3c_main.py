@@ -109,7 +109,18 @@ def process_args(args, defaults, description):
     parser.add_argument('--gamma_rate', type=float, dest="gamma_rate",
                         default=defaults.GAMMA_RATE,
                         help=('Gamma rate propagating rewards backward'))
-
+    
+    parser.add_argument('--a3c_lstm', action="store_true", dest="a3c_lstm",
+                        default=defaults.A3C_LSTM,
+                        help=('Use A3C-LSTM model instead of A3C-FF ' +
+                              '(default: %(default)s'))
+                        
+    parser.add_argument('--lstm_output_units', type=int,
+                        dest="lstm_output_units",
+                        default=defaults.LSTM_OUTPUT_UNITS,
+                        help=('Number of output units in A3C-LSTM agent' +
+                              ' (default: % (default)s'))
+                        
     parameters = parser.parse_args(args)
 
     return parameters
@@ -146,7 +157,9 @@ def launch(args, defaults, description):
         gamma_rate=parameters.gamma_rate,
         learning_rate=parameters.learning_rate,
         gradient_clipping=parameters.gradient_clipping,
-        model_file=parameters.load_file)
+        model_file=parameters.load_file,
+        a3c_lstm=parameters.a3c_lstm,
+        lstm_output_units=parameters.lstm_output_units)
 
     logging.info("Num Actors {}".format(parameters.num_threads))
     agent.execute()

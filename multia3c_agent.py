@@ -730,7 +730,9 @@ class MultiA3CTrainStream(object):
                  sample_argmax=True, num_steps_eval=1000,
                  num_reps_eval=10, learning_rate=0.00025,
                  gamma_rate=0.99,
-                 gradient_clipping=None, model_file=None):
+                 gradient_clipping=None, model_file=None,
+                 a3c_lstm=False,
+                 lstm_output_units=256):
         """ Initialize stuff
 
         """
@@ -755,6 +757,8 @@ class MultiA3CTrainStream(object):
         self.gradient_clipping = gradient_clipping
         self.model_file = model_file
         self.gamma_rate = gamma_rate
+        self.a3c_lstm = a3c_lstm
+        self.lstm_output_units = lstm_output_units
 
         # Build shared envs
         # TODO: check

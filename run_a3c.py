@@ -38,7 +38,9 @@ class Defaults:
     RESIZED_HEIGHT = 84
     AGENT_HISTORY_LENGTH = 4
     CHECKPOINT_INTERVAL = 50000
+    A3C_LSTM = False
+    LSTM_OUTPUT_UNITS = 256
 
-
+    
 if __name__ == "__main__":
     a3c_main.launch(sys.argv[1:], Defaults, __doc__)
