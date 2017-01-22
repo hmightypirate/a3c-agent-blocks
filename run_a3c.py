@@ -32,7 +32,7 @@ class Defaults:
     #-----------------------
     # A3C Parameters
     #-----------------------
-    NUM_THREADS = 8  # 16
+    NUM_THREADS = 4  # 16
     RESIZED_WIDTH = 84
     GAMMA_RATE = 0.99
     RESIZED_HEIGHT = 84
@@ -41,6 +41,6 @@ class Defaults:
     A3C_LSTM = False
     LSTM_OUTPUT_UNITS = 256
 
-    
+
 if __name__ == "__main__":
     a3c_main.launch(sys.argv[1:], Defaults, __doc__)

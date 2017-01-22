@@ -325,7 +325,6 @@ class PolicyAndValueA3CLSTM(Initializable):
         # LSTM block
 
         # Preparation to LSTM
-        print "FLUX ", self.shared_a3c.top_mlp_dims[-1]
         print "LSTM UNITS ", self.lstm_output_units
         self.linear_to_lstm = Linear(self.shared_a3c.top_mlp_dims[-1],
                                      self.lstm_output_units * 4,
@@ -695,7 +694,7 @@ def build_a3c_network_lstm(feature_maps=[16, 32],
     policy_and_value_net.linear_to_lstm.weights_init = Uniform(
         std=1.0/np.sqrt(feature_maps[-1]))
     policy_and_value_net.linear_to_lstm.biases_init = Constant(.0)
-    policy_and_value_net_lstm.linear_to_lstm.initialize()
+    policy_and_value_net.linear_to_lstm.initialize()
     policy_and_value_net.lstm_block.weights_init = Uniform(
         std=1.0/np.sqrt(feature_maps[-1]))
     policy_and_value_net.lstm_block.biases_init = Constant(.0)
@@ -736,6 +735,8 @@ def build_a3c_network_lstm(feature_maps=[16, 32],
     cg_policy = ComputationGraph(policy_network)
     cg_value = ComputationGraph(value_network)
 
+    print "POLICY INPUTS ", cg_policy.inputs
+    print "VALUE INPUTS ", cg_value.inputs
     # Perform some optimization step
     cg = ComputationGraph(cost_network)
 
@@ -1042,3 +1043,70 @@ if __name__ == "__main__":
 
     cost_model = Model(cost_network)
     logger.info("Cost Model ".format(cost_model.get_parameter_dict()))
+
+    # Check differnent result with batch
+
+    random_data = np.array(np.random.randint(128,
+                                             size=(1, num_channels,
+                                                   image_size[0],
+                                                   image_size[1])),
+                           dtype="float32")
+
+    random_data = np.concatenate((random_data, random_data),
+                                 axis=0)
+
+    print "RANDOM_INPUT_", np.shape(random_data)
+    random_states = np.array(np.random.rand(1, lstm_output_units),
+                             dtype="float32")
+    random_cells = np.array(np.random.rand(1, lstm_output_units),
+                            dtype="float32")
+
+    pol_result = policy[0].eval(
+        {x: random_data,
+         th_states: random_states,
+         th_cells: random_cells})
+
+    next_state = policy[1].eval(
+        {x: random_data,
+         th_states: random_states,
+         th_cells: random_cells})
+
+    next_cell = policy[2].eval(
+        {x: random_data,
+         th_states: random_states,
+         th_cells: random_cells})
+
+    print "POLRESULT ", pol_result
+
+    print "NEXT_STATE {} SUM0 {} SUM1 {}".format(np.shape(next_state),
+                                                 np.sum(next_state[0]),
+                                                 np.sum(next_state[1]))
+    print "NEXT_CELL {} SUM0 {} SUM1 {}".format(np.shape(next_cell),
+                                                np.sum(next_cell[0]),
+                                                np.sum(next_cell[1]))
+
+    # Do the same step by step
+
+    prev_state = random_states
+    prev_cell = random_cells
+
+    pol_result = policy[0].eval(
+        {x: [random_data[0]],
+         th_states: prev_state,
+         th_cells: prev_cell})
+
+    next_state = policy[1].eval(
+        {x: [random_data[0]],
+         th_states: prev_state,
+         th_cells: prev_cell})
+
+    next_cell = policy[2].eval(
+        {x: [random_data[0]],
+         th_states: prev_state,
+         th_cells: prev_cell})
+
+    print "NEXT_STATE {} SUM1 {}".format(np.shape(next_state),
+                                         np.sum(next_state))
+
+    print "NEXT_CELL {} SUM1 {}".format(np.shape(next_cell),
+                                        np.sum(next_cell))
