@@ -32,7 +32,7 @@ class Defaults:
     #-----------------------
     # A3C Parameters
     #-----------------------
-    NUM_THREADS = 1  # 16
+    NUM_THREADS = 16
     RESIZED_WIDTH = 84
     GAMMA_RATE = 0.99
     RESIZED_HEIGHT = 84

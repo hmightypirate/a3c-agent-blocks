@@ -1,6 +1,6 @@
 # Implementation of A3C Reinforcement Learning Agent in Blocks.
 
-This is an implementation of the A3C-FF agent using the [Blocks library](https://github.com/mila-udem/blocks). A3C is an original work of Google Deepmind you could find in ["Asynchronous Methods for Deep Reinforcement Learning"](http://arxiv.org/pdf/1602.01783v1.pdf)
+This is an implementation of the A3C-FF and A3C-LSTM agent using the [Blocks library](https://github.com/mila-udem/blocks). A3C is an original work of Google Deepmind you could find in ["Asynchronous Methods for Deep Reinforcement Learning"](http://arxiv.org/pdf/1602.01783v1.pdf)
 
 This project was initially intended as a personal project to learn the Blocks library and to code the basic version of an A3C agent at the same time. Keeping this in mind I've tried:
 * To reuse as much existent blocks as possible in building the agent.
@@ -52,6 +52,14 @@ python run_a3c.py --training --game Pooyan-v0
 
 NOTE: remember to use the same --game parameter during evaluation
 
+
+To train an A3C-LSTM agent (not widely tested yet) type:
+
+```
+python run_a3c.py --training --a3c_lstm
+```
+
+Again, remember to use the same parameters during evaluation
 
 ## Results
 TODO: Coming soon!

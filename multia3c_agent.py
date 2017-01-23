@@ -12,6 +12,8 @@ import network as A3C
 
 # FIXME: have to increase depth limit slightly for A3C-LSTM agent
 sys.setrecursionlimit(50000)
+# Disabling gym logger
+gym.undo_logger_setup()
 
 
 def sample_policy_action(num_actions, probs, rng):
@@ -734,7 +736,8 @@ class A3C_Agent(threading.Thread):
             # Picking last value for stats
             last_value = self.obtain_value([s_t])[0]
 
-            logging.info("Last Value {}".format(last_value))
+            # FIXME: substitute print by a functional logging
+            # logging.info("Last Value {}".format(last_value))
 
             batch = self.prepare_input_gradient(s_batch, a_batch, R_batch)
 
@@ -748,11 +751,6 @@ class A3C_Agent(threading.Thread):
                 logging.info("Current IT {} Steps {}".format(
                     self.shared_model.common_model.curr_it,
                     self.shared_model.common_model.curr_steps))
-
-                # logging.info("Cost network {}".format(self.cost_function(
-                #    batch['input_image'],
-                #    batch['input_reward'],
-                #    batch['input_actions'])[0]))
 
                 logging.info("PROBS {}".format(
                     last_probs))
@@ -769,7 +767,7 @@ class A3C_Agent(threading.Thread):
                 batch_size=t-t_start,
                 stats_flag=((self.num == 0) and
                             ((self.shared_model.common_model.curr_it %
-                              100 == 0)) or (
+                              1000 == 0)) or (
                          self.shared_model.common_model.curr_it == 1)))
 
             self.shared_model.common_model.curr_it += 1
@@ -791,7 +789,7 @@ class A3C_Agent(threading.Thread):
                 logging.info(("Episode Reward\t{}\tEpisode " +
                               "Length\t{}\tValue " +
                               "terminal state\t{}").format(
-                                ep_reward, ep_t, last_value))
+                                  ep_reward, ep_t, last_value[0][0]))
                 # TODO: collect stats
                 s_t = env.get_initial_state()
                 terminal = False
