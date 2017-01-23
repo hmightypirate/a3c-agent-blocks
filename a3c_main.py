@@ -129,7 +129,21 @@ def process_args(args, defaults, description):
 def launch(args, defaults, description):
     """ Basic launch functionality """
 
+    # set up logging to file - see previous section for more details
     logging.basicConfig(level=logging.INFO)
+
+    # define a Handler which writes INFO messages or higher to the sys.stderr
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+    # set a format which is simpler for console use
+    formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
+    # tell the handler to use this format
+    console.setFormatter(formatter)
+    # add the handler to the root logger
+    logging.getLogger('').addHandler(console)
+
+    logger = logging.getLogger('basic')
+    
     parameters = process_args(args, defaults, description)
 
     if parameters.deterministic:
@@ -161,7 +175,7 @@ def launch(args, defaults, description):
         a3c_lstm=parameters.a3c_lstm,
         lstm_output_units=parameters.lstm_output_units)
 
-    logging.info("Num Actors {}".format(parameters.num_threads))
+    logger.info("Num Actors {}".format(parameters.num_threads))
     agent.execute()
 
 

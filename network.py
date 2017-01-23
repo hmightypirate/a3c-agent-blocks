@@ -330,6 +330,7 @@ class PolicyAndValueA3CLSTM(Initializable):
                                      self.lstm_output_units * 4,
                                      name='linear_to_lstm')
         self.lstm_block = LSTM(lstm_output_units, name='lstm')
+                               #activation=Rectifier())
 
         # Policy has one dimension per each action
         self.policy = MLP([activation_policy], [
@@ -385,13 +386,13 @@ class PolicyAndValueA3CLSTM(Initializable):
         h = h.sum(axis=1)
         c = c.sum(axis=1)
 
-        p_value = (self.policy.apply(h))
+        p_value = self.policy.apply(h)
         log_prob = T.log(T.sum((p_value) * input_actions,
                                axis=1, keepdims=True))
         v_value = self.value.apply(h)
         p_loss = -log_prob * theano.gradient.disconnected_grad(
             input_reward[:, None] - v_value)
-
+        
         entropy = -T.sum(p_value * T.log(p_value), axis=1,
                          keepdims=True)
         # encourage action diversity by substracting entropy
@@ -438,6 +439,7 @@ def build_a3c_network(feature_maps=[16, 32],
     num_actions: int
       number of actions of the Actor (output of the policy network)
     lr : float
+
       learning rate of async rmsprop
     clip_c : float
       > 0 if gradient should be clipped. FIXME: actually not used
@@ -692,11 +694,11 @@ def build_a3c_network_lstm(feature_maps=[16, 32],
             i].bias_init = Constant(.0)
 
     policy_and_value_net.linear_to_lstm.weights_init = Uniform(
-        std=1.0/np.sqrt(feature_maps[-1]))
+        std=1.0/np.sqrt(mlp_hiddens[-1]))
     policy_and_value_net.linear_to_lstm.biases_init = Constant(.0)
     policy_and_value_net.linear_to_lstm.initialize()
     policy_and_value_net.lstm_block.weights_init = Uniform(
-        std=1.0/np.sqrt(feature_maps[-1]))
+        std=1.0/np.sqrt(mlp_hiddens[-1]))
     policy_and_value_net.lstm_block.biases_init = Constant(.0)
     policy_and_value_net.lstm_block.initialize()
 
@@ -737,6 +739,10 @@ def build_a3c_network_lstm(feature_maps=[16, 32],
 
     print "POLICY INPUTS ", cg_policy.inputs
     print "VALUE INPUTS ", cg_value.inputs
+
+    print "POLICY OUTPUTS ", cg_policy.outputs
+    print "VALUE OUTPUTS ", cg_value.outputs
+    
     # Perform some optimization step
     cg = ComputationGraph(cost_network)
 
@@ -784,6 +790,8 @@ def build_a3c_network_lstm(feature_maps=[16, 32],
 
     algorithm.initialize()
 
+    print "COST_INPUTS ",cg.inputs
+    
     f_cost = theano.function(inputs=cg.inputs, outputs=cg.outputs)
     f_policy = theano.function(inputs=cg_policy.inputs,
                                outputs=cg_policy.outputs)

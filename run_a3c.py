@@ -12,7 +12,7 @@ class Defaults:
     TRAINING = False  # testing by default
     EPOCHS = 100  # FIXME: not used
     MAX_STEPS = 160000000
-    BATCH_SIZE = 5
+    BATCH_SIZE = 32
     DETERMINISTIC = False  # use deterministic seed
     SAMPLE_ARGMAX = False  # False means use exploration
     NUM_REPS_EVAL = 10
@@ -32,7 +32,7 @@ class Defaults:
     #-----------------------
     # A3C Parameters
     #-----------------------
-    NUM_THREADS = 4  # 16
+    NUM_THREADS = 1  # 16
     RESIZED_WIDTH = 84
     GAMMA_RATE = 0.99
     RESIZED_HEIGHT = 84

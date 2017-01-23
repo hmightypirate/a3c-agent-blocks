@@ -1,6 +1,6 @@
+import sys
 import gym
 import gym.wrappers
-from theano import tensor as T
 import threading
 import time
 import numpy as np
@@ -8,11 +8,10 @@ import logging
 from atari_environment import AtariEnvironment
 from collections import OrderedDict
 from blocks import serialization
-
 import network as A3C
 
-logging.basicConfig(level=logging.INFO)
-#logger = logging.getLogger(__name__)
+# FIXME: have to increase depth limit slightly for A3C-LSTM agent
+sys.setrecursionlimit(50000)
 
 
 def sample_policy_action(num_actions, probs, rng):
@@ -199,6 +198,8 @@ class Common_Model_LSTM(Common_Model):
                  num_steps_eval=100, sample_argmax=False,
                  lstm_output_units=256):
 
+        self.lstm_output_units = lstm_output_units
+        
         super(Common_Model_LSTM, self).__init__(
             rng, game, model, algorithm,
             policy_network,
@@ -206,8 +207,6 @@ class Common_Model_LSTM(Common_Model):
             resized_width, resized_height, agent_history_length,
             max_steps, render_flag, results_file,
             num_steps_eval, sample_argmax)
-
-        self.lstm_output_units = lstm_output_units
 
     def reset_internal_state(self):
         """ Resets internal state: state and LSTM cell """
@@ -383,19 +382,20 @@ class Common_Model_Wrapper(object):
             self.lock.acquire()
             self.common_model.algorithm.process_batch(new_update)
             self.lock.release()
-
+            
             if (stats_flag):
-                logging.info(("After Update {} with Mean {} Current {}" +
-                             "Shape {}").format(
-                    kk,
-                    np.mean(new_update[kk]),
-                    np.mean(
-                        self.common_model.model.get_parameter_dict()[
-                            kk].get_value()),
-                    np.shape(
-                        self.common_model.model.get_parameter_dict()[
-                            kk].get_value())))
-
+                for kk in self.common_model.model.get_parameter_dict():
+                    logging.info(("After Update {} with Mean {} Current {}" +
+                                  " Shape {}").format(
+                                      kk,
+                                      np.mean(new_update[kk]),
+                                      np.mean(
+                                          self.common_model.model.get_parameter_dict()[
+                                              kk].get_value()),
+                                      np.shape(
+                                          self.common_model.model.get_parameter_dict()[
+                                              kk].get_value())))
+                    
         finally:
             pass
 
@@ -408,14 +408,8 @@ class Common_Model_Wrapper(object):
         agent_model : instance of :class: `~blocks.model.Model`
 
         """
-
-        self.lock.acquire()  # FIXME: remove
-        try:
-            agent_model.set_parameter_values(
-                self.common_model.model.get_parameter_values())
-
-        finally:
-            self.lock.release()  # FIXME: remove
+        agent_model.set_parameter_values(
+            self.common_model.model.get_parameter_values())
 
     def perform_evaluation(self, num_reps, experiment_name,
                            eval_it, do_gym_eval=False):
@@ -722,6 +716,9 @@ class A3C_Agent(threading.Thread):
                 # Debug
                 last_probs = probs
 
+                last_value = self.obtain_value([s_t])[0]
+                
+
             if terminal:
                 R_t = 0
             else:
@@ -738,17 +735,20 @@ class A3C_Agent(threading.Thread):
             # Picking last value for stats
             last_value = self.obtain_value([s_t])[0]
 
+            logging.info("Last Value {}".format(last_value))
+            
             batch = self.prepare_input_gradient(s_batch, a_batch, R_batch)
 
             # Minimize gradient
             # Show stats each 1000 iterations
-            if (self.shared_model.common_model.curr_it % 1000 == 0):
+            if (self.shared_model.common_model.curr_it % 100 == 0):
                 # Show progress
                 logging.info("Reward in batch {}".format(batch['input_reward']))
 
                 logging.info("Current IT {} Steps {}".format(
                     self.shared_model.common_model.curr_it,
                     self.shared_model.common_model.curr_steps))
+
                 #logging.info("Cost network {}".format(self.cost_function(
                 #    batch['input_image'],
                 #    batch['input_reward'],
@@ -757,11 +757,6 @@ class A3C_Agent(threading.Thread):
                 logging.info("PROBS {}".format(
                     last_probs))
                 logging.info("VALUES {}".format(self.obtain_value([s_t])[0]))
-
-                print("PROBS {}".format(
-                    last_probs))
-                print("VALUES {}".format(self.obtain_value([s_t])[0]))
-
                 
             # Perform basic gradient descent
             self.optim_algorithm.process_batch(batch)
@@ -797,10 +792,6 @@ class A3C_Agent(threading.Thread):
                               "Length\t{}\tValue " +
                             "terminal state\t{}").format(
                                 ep_reward, ep_t, last_value))
-
-                print(("Episode Reward\t{}\tEpisode Length\t{}\tValue " +
-                      "terminal state\t{}").format(
-                          ep_reward, ep_t, last_value))
                 # TODO: collect stats
                 s_t = env.get_initial_state()
                 terminal = False
@@ -892,7 +883,7 @@ class A3C_AgentLSTM(A3C_Agent):
         """
         probs, state, cells = self.policy_network(self.cells[-1], s_t,
                                                   self.state[-1])
-
+        
         self.state.append(state)
         self.cells.append(cells)
 
@@ -909,13 +900,21 @@ class A3C_AgentLSTM(A3C_Agent):
         batch = super(A3C_AgentLSTM, self).prepare_input_gradient(s_batch,
                                                                   a_batch,
                                                                   R_batch)
+        
         batch['states'] = self.state[0]
         batch['cells'] = self.cells[0]
-
+        
+        error = self.cost_function(batch['cells'],
+                                   batch['input_image'],
+                                   batch['states'],
+                                   batch['input_reward'],
+                                   batch['input_actions'])
         # Clear the internal state
+        #self.reset_internal_state()
         last_state = self.state[-1]
         last_cell = self.cells[-1]
 
+        # Picking last state
         self.state = []
         self.cells = []
         self.state.append(last_state)
@@ -1017,6 +1016,7 @@ class MultiA3CTrainStream(object):
     def training(self):
         """ Perform the training steps """
 
+        # FIXME: Refactor this code
         # Create the envs of the threaded workers
         envs = [gym.make(self.game) for i in range(self.num_threads)]
 
@@ -1215,7 +1215,7 @@ class MultiA3CTrainStream(object):
                 render_flag=self.render_flag)
 
         if self.model_file is not None:
-            print "LOADING PREVIOUS MODEL"
+            print "Loading previous model"
             with open(self.model_file, 'rb') as src:
                 parameters = serialization.load_parameters(src)
                 a3c_global_costmodel.common_model.model.set_parameter_values(
