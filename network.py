@@ -330,7 +330,7 @@ class PolicyAndValueA3CLSTM(Initializable):
                                      self.lstm_output_units * 4,
                                      name='linear_to_lstm')
         self.lstm_block = LSTM(lstm_output_units, name='lstm')
-                               #activation=Rectifier())
+        # activation=Rectifier())
 
         # Policy has one dimension per each action
         self.policy = MLP([activation_policy], [
@@ -392,7 +392,7 @@ class PolicyAndValueA3CLSTM(Initializable):
         v_value = self.value.apply(h)
         p_loss = -log_prob * theano.gradient.disconnected_grad(
             input_reward[:, None] - v_value)
-        
+
         entropy = -T.sum(p_value * T.log(p_value), axis=1,
                          keepdims=True)
         # encourage action diversity by substracting entropy
@@ -742,7 +742,7 @@ def build_a3c_network_lstm(feature_maps=[16, 32],
 
     print "POLICY OUTPUTS ", cg_policy.outputs
     print "VALUE OUTPUTS ", cg_value.outputs
-    
+
     # Perform some optimization step
     cg = ComputationGraph(cost_network)
 
@@ -790,8 +790,8 @@ def build_a3c_network_lstm(feature_maps=[16, 32],
 
     algorithm.initialize()
 
-    print "COST_INPUTS ",cg.inputs
-    
+    print "COST_INPUTS ", cg.inputs
+
     f_cost = theano.function(inputs=cg.inputs, outputs=cg.outputs)
     f_policy = theano.function(inputs=cg_policy.inputs,
                                outputs=cg_policy.outputs)

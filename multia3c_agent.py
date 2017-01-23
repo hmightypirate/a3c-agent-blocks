@@ -199,7 +199,7 @@ class Common_Model_LSTM(Common_Model):
                  lstm_output_units=256):
 
         self.lstm_output_units = lstm_output_units
-        
+
         super(Common_Model_LSTM, self).__init__(
             rng, game, model, algorithm,
             policy_network,
@@ -365,37 +365,26 @@ class Common_Model_Wrapper(object):
             else:
                 logging.error("{} is not part of the update ".format(kk))
 
-        if (stats_flag):
-            for kk in self.common_model.model.get_parameter_dict():
-                logging.info(("Before Update {} with Mean {} Current {}" +
-                             "Shape {}").format(
-                    kk,
-                    np.mean(new_update[kk]),
-                    np.mean(
-                        self.common_model.model.get_parameter_dict()[
-                            kk].get_value()),
-                    np.shape(
-                        self.common_model.model.get_parameter_dict()[
-                            kk].get_value())))
         try:
             # Acquiring the lock and perform update
             self.lock.acquire()
             self.common_model.algorithm.process_batch(new_update)
             self.lock.release()
-            
+
             if (stats_flag):
                 for kk in self.common_model.model.get_parameter_dict():
-                    logging.info(("After Update {} with Mean {} Current {}" +
-                                  " Shape {}").format(
-                                      kk,
-                                      np.mean(new_update[kk]),
-                                      np.mean(
-                                          self.common_model.model.get_parameter_dict()[
-                                              kk].get_value()),
-                                      np.shape(
-                                          self.common_model.model.get_parameter_dict()[
-                                              kk].get_value())))
-                    
+                    logging.info(
+                        ("After Update {} with Mean {} Current {}" +
+                         " Shape {}").format(
+                             kk,
+                             np.mean(new_update[kk]),
+                             np.mean(
+                                 self.common_model.model.get_parameter_dict()[
+                                     kk].get_value()),
+                             np.shape(
+                                 self.common_model.model.get_parameter_dict()[
+                                     kk].get_value())))
+
         finally:
             pass
 
@@ -633,7 +622,18 @@ class A3C_Agent(threading.Thread):
         return self.value_network(s_t)
 
     def prepare_input_gradient(self, s_batch, a_batch, R_batch):
-        """ TODO """
+        """ Preparees the input to the gradient calculation
+
+        s_batch: an instance of :class: numpy.matrix
+          it contains (batch, agent_history, imag_width, imag_height)
+        a_batch: list of :class: numpy.matrix
+          it contains a one-hot encoded vector with the action
+          for each sample in the batch
+        R_batch: list of :class: numpy.matrix
+          contains the bootstrapped reward for each step
+          (sample of the batch)
+
+        """
 
         batch = OrderedDict()
         batch['input_image'] = s_batch
@@ -688,10 +688,10 @@ class A3C_Agent(threading.Thread):
             init_params = extract_params_from_model(self.cost_model)
 
             # Execute one iteration
-    
+
             while not (terminal or ((t - t_start) == self.batch_size)):
                 probs = self.obtain_policy([s_t])[0]
-                
+
                 action_index = self._sample_function(
                     len(env.gym_actions), probs, self.rng)
                 a_t = np.zeros([len(env.gym_actions)])
@@ -717,7 +717,6 @@ class A3C_Agent(threading.Thread):
                 last_probs = probs
 
                 last_value = self.obtain_value([s_t])[0]
-                
 
             if terminal:
                 R_t = 0
@@ -736,20 +735,21 @@ class A3C_Agent(threading.Thread):
             last_value = self.obtain_value([s_t])[0]
 
             logging.info("Last Value {}".format(last_value))
-            
+
             batch = self.prepare_input_gradient(s_batch, a_batch, R_batch)
 
             # Minimize gradient
             # Show stats each 1000 iterations
             if (self.shared_model.common_model.curr_it % 100 == 0):
                 # Show progress
-                logging.info("Reward in batch {}".format(batch['input_reward']))
+                logging.info("Reward in batch {}".format(
+                    batch['input_reward']))
 
                 logging.info("Current IT {} Steps {}".format(
                     self.shared_model.common_model.curr_it,
                     self.shared_model.common_model.curr_steps))
 
-                #logging.info("Cost network {}".format(self.cost_function(
+                # logging.info("Cost network {}".format(self.cost_function(
                 #    batch['input_image'],
                 #    batch['input_reward'],
                 #    batch['input_actions'])[0]))
@@ -757,7 +757,7 @@ class A3C_Agent(threading.Thread):
                 logging.info("PROBS {}".format(
                     last_probs))
                 logging.info("VALUES {}".format(self.obtain_value([s_t])[0]))
-                
+
             # Perform basic gradient descent
             self.optim_algorithm.process_batch(batch)
             # update common parameters
@@ -790,7 +790,7 @@ class A3C_Agent(threading.Thread):
             if terminal:
                 logging.info(("Episode Reward\t{}\tEpisode " +
                               "Length\t{}\tValue " +
-                            "terminal state\t{}").format(
+                              "terminal state\t{}").format(
                                 ep_reward, ep_t, last_value))
                 # TODO: collect stats
                 s_t = env.get_initial_state()
@@ -883,14 +883,20 @@ class A3C_AgentLSTM(A3C_Agent):
         """
         probs, state, cells = self.policy_network(self.cells[-1], s_t,
                                                   self.state[-1])
-        
+
         self.state.append(state)
         self.cells.append(cells)
 
         return probs
 
     def obtain_value(self, s_t):
-        """ TODO """
+        """ Obtains the value of the critic per state
+
+        Parameters
+        ----------
+        s_t: list of states
+
+        """
         value = self.value_network(self.cells[-1], s_t, self.state[-1])
         return value
 
@@ -900,17 +906,19 @@ class A3C_AgentLSTM(A3C_Agent):
         batch = super(A3C_AgentLSTM, self).prepare_input_gradient(s_batch,
                                                                   a_batch,
                                                                   R_batch)
-        
+
         batch['states'] = self.state[0]
         batch['cells'] = self.cells[0]
-        
-        error = self.cost_function(batch['cells'],
-                                   batch['input_image'],
-                                   batch['states'],
-                                   batch['input_reward'],
-                                   batch['input_actions'])
+
+        # FIXME: DEBUG
+        # error = self.cost_function(batch['cells'],
+        #                           batch['input_image'],
+        #                           batch['states'],
+        #                           batch['input_reward'],
+        #                           batch['input_actions'])
+
         # Clear the internal state
-        #self.reset_internal_state()
+        # self.reset_internal_state()
         last_state = self.state[-1]
         last_cell = self.cells[-1]
 
@@ -1094,7 +1102,6 @@ class MultiA3CTrainStream(object):
                 sample_argmax=self.sample_argmax)
                            for thread_id in range(self.num_threads)]
 
- 
         else:
             a3c_global = A3C.build_a3c_network(
                 image_size=(self.resized_width, self.resized_height),

@@ -143,7 +143,7 @@ def launch(args, defaults, description):
     logging.getLogger('').addHandler(console)
 
     logger = logging.getLogger('basic')
-    
+
     parameters = process_args(args, defaults, description)
 
     if parameters.deterministic:
