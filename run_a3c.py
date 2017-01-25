@@ -11,7 +11,7 @@ class Defaults:
     #------------------------
     TRAINING = False  # testing by default
     EPOCHS = 100  # FIXME: not used
-    MAX_STEPS = 60000 #160000000
+    MAX_STEPS = 160000000
     BATCH_SIZE = 32
     DETERMINISTIC = False  # use deterministic seed
     SAMPLE_ARGMAX = False  # False means use exploration
@@ -37,7 +37,7 @@ class Defaults:
     GAMMA_RATE = 0.99
     RESIZED_HEIGHT = 84
     AGENT_HISTORY_LENGTH = 4
-    CHECKPOINT_INTERVAL = 500000
+    CHECKPOINT_INTERVAL = 50000
     A3C_LSTM = False
     LSTM_OUTPUT_UNITS = 256
 
