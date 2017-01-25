@@ -369,9 +369,8 @@ class Common_Model_Wrapper(object):
 
         try:
             # Acquiring the lock and perform update
-            self.lock.acquire()
-            self.common_model.algorithm.process_batch(new_update)
-            self.lock.release()
+            with self.lock:
+                self.common_model.algorithm.process_batch(new_update)
 
             if (stats_flag):
                 for kk in self.common_model.model.get_parameter_dict():

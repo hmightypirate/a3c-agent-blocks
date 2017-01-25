@@ -1,6 +1,9 @@
 import argparse
 import logging
 import numpy as np
+import cProfile
+import pstats
+import StringIO
 import multia3c_agent as LAU
 
 
@@ -106,6 +109,9 @@ def process_args(args, defaults, description):
     parser.add_argument('--load_file', dest="load_file", default=None,
                         type=str, help=('Load pretrained model'))
 
+    parser.add_argument('--profile', dest="profile", default=False,
+                        action='store_true', help=('Profile Mode'))
+
     parser.add_argument('--gamma_rate', type=float, dest="gamma_rate",
                         default=defaults.GAMMA_RATE,
                         help=('Gamma rate propagating rewards backward'))
@@ -176,8 +182,21 @@ def launch(args, defaults, description):
         lstm_output_units=parameters.lstm_output_units)
 
     logger.info("Num Actors {}".format(parameters.num_threads))
+
+    if (parameters.profile):
+        pr = cProfile.Profile()
+        pr.enable()
+    
     agent.execute()
 
+    if (parameters.profile):
+        pr.disable()
+        s = StringIO.StringIO()
+        sortby = 'cumulative'
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        print (s.getvalue())
+        
 
 if __name__ == '__main__':
     pass
