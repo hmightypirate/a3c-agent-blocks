@@ -7,7 +7,11 @@ This project was initially intended as a personal project to learn the Blocks li
 * When building new blocks could not be avoided, I've tried to use the same coding style of the original library (e.g. the Aysnchronous version of RMSProp).
 * To use the same network/parameterization of the A3C agent used in the original paper, although using the gym environment instead of directly interacting with the ALE environment [](https://github.com/mgbellemare/Arcade-Learning-Environment)
 
-![](https://cloud.githubusercontent.com/assets/7602074/21998208/b7b9472c-dc33-11e6-8052-a58139d8c23e.png)
+Here are some nice gifs of the agent playing Breakout and Phoenix.
+
+![](https://cloud.githubusercontent.com/assets/7602074/22707857/6eea5cc8-ed74-11e6-8ed0-d49bd0fe2177.gif)
+
+![](https://cloud.githubusercontent.com/assets/7602074/22707858/6ef0ff88-ed74-11e6-8f2f-9be931966f71.gif)
 
 ## Requirements
 * Blocks (http://blocks.readthedocs.io/en/latest/setup.html)
