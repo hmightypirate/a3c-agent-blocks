@@ -9,9 +9,7 @@ This project was initially intended as a personal project to learn the Blocks li
 
 Here are some nice gifs of the agent playing Breakout and Phoenix.
 
-![](https://cloud.githubusercontent.com/assets/7602074/22707857/6eea5cc8-ed74-11e6-8ed0-d49bd0fe2177.gif)
-
-![](https://cloud.githubusercontent.com/assets/7602074/22707858/6ef0ff88-ed74-11e6-8f2f-9be931966f71.gif)
+![](https://cloud.githubusercontent.com/assets/7602074/22707857/6eea5cc8-ed74-11e6-8ed0-d49bd0fe2177.gif) ![](https://cloud.githubusercontent.com/assets/7602074/22707858/6ef0ff88-ed74-11e6-8f2f-9be931966f71.gif)
 
 ## Requirements
 * Blocks (http://blocks.readthedocs.io/en/latest/setup.html)
